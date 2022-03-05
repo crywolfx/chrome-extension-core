@@ -22,7 +22,7 @@
     "experimentalDecorators": true,
     "declaration": true,
     "emitDeclarationOnly": false,
-    "declarationDir": "./types",
+    "declarationDir": "./lib",
     "baseUrl": "./",
     "paths": {
       "@/*": [
