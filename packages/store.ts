@@ -2,7 +2,7 @@ export type WatcherCallback<T extends Record<string, unknown>> = (
   changes: Record<keyof T, chrome.storage.StorageChange>,
   areaName?: chrome.storage.AreaName,
 ) => void;
-export default class ChromeStorage<T extends Record<string, unknown>> {
+export class ChromeStorage<T extends Record<string, unknown>> {
   private runTimeApi: chrome.storage.SyncStorageArea | chrome.storage.LocalStorageArea;
   defaultValue: T;
 
