@@ -1,12 +1,16 @@
 import { isFunction } from './utils';
 import { getTab } from './tab';
 
+export type Scope = string | symbol | undefined;
+
 export class EventMessage<Key = EventType, DataType = any> {
   key: Key;
   data: DataType | undefined;
-  constructor(key: Key, data?: DataType) {
+  scope: Scope;
+  constructor(key: Key, data?: DataType, scope?: Scope) {
     this.key = key;
     this.data = data;
+    this.scope = scope;
   }
 }
 
@@ -43,9 +47,16 @@ export function getFuncParameters(func: (...args: any[]) => any) {
   return 0;
 }
 
-class Event<Events extends Record<EventType, unknown>> {
+export class Event<Events extends Record<EventType, unknown>> {
   listeners = new Map();
-  constructor() {
+  scope: Scope;
+  /**
+   * Creates an instance of Event.
+   * @param {Scope} [scope] 隔离scope，避免监听到重名事件
+   * @memberof Event
+   */
+  constructor(scope?: Scope) {
+    this.scope = scope;
     chrome.runtime?.onMessage?.addListener?.((request, sender, sendResponse) => {
       this.dispatchEvent(request, sendResponse);
     });
@@ -54,15 +65,15 @@ class Event<Events extends Record<EventType, unknown>> {
     request: EventMessage<keyof Events, Events[keyof Events]>,
     sendResponse: (response?: CallbackResponse) => void,
   ) {
-    const { key, data } = request;
-
+    const { key, data, scope } = request;
+    if (scope && scope !== this.scope) return;
     if (this.listeners.has(key)) {
       const handlers = this.listeners.get(key);
       handlers.forEach(
         (
           handler: (
             data: any,
-            callback: (response?: CallbackResponse) => void,
+            callback?: (response?: CallbackResponse) => void,
           ) => CallbackResponse | Promise<CallbackResponse> | void | Promise<void>,
         ) => {
           const paramSize = getFuncParameters(handler);
@@ -90,6 +101,7 @@ class Event<Events extends Record<EventType, unknown>> {
       );
     }
   }
+
   on<Key extends keyof Events>(key: Key, handler: Handler<Events, Key>) {
     const handlers: Handler<Events, Key>[] = this.listeners.get(key);
     if (handlers) {
@@ -109,34 +121,38 @@ class Event<Events extends Record<EventType, unknown>> {
       }
     }
   }
-}
 
-export class ClientEvent<Events extends Record<EventType, unknown>> extends Event<Events> {
+  /**
+   * 不指定tabId发送消息
+   * 长用作给background发送消息
+   */
   emit<Key extends keyof Events>(
     key: Key,
     data: Events[Key],
     successCallback?: (response?: CallbackResponse) => void,
   ) {
-    const message = new EventMessage(key, data);
-    return new Promise((resolve) => {
+    const message = new EventMessage(key, data, this.scope);
+    return new Promise<CallbackResponse | undefined>((resolve) => {
       chrome.runtime?.sendMessage?.(message, (res) => {
         successCallback?.(res);
         resolve(res);
       });
     });
   }
-}
 
-export class ServiceEvent<Events extends Record<EventType, unknown>> extends Event<Events> {
-  emit<Key extends keyof Events>(
+  /**
+   * 指定tabId发送消息
+   * 默认为当前激活状态的tabId
+   */
+  emitSpecify<Key extends keyof Events>(
     key: Key,
     data: Events[Key],
     successCallback?: (response?: CallbackResponse) => void,
     tabId?: number,
   ) {
-    const message = new EventMessage(key, data);
-    return new Promise(async (resolve, reject) => {
-      const _tabId = tabId || (await getTab())?.id;
+    const message = new EventMessage(key, data, this.scope);
+    return new Promise<CallbackResponse | undefined>(async (resolve, reject) => {
+      const _tabId = tabId || (await getTab().catch(() => Promise.resolve({ id: undefined })))?.id;
       if (_tabId) {
         chrome.tabs?.sendMessage?.(_tabId, message, (res) => {
           successCallback?.(res);

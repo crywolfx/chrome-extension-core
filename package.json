@@ -1,6 +1,6 @@
 {
   "name": "chrome-extension-core",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "chrome extension core",
   "main": "lib/index.js",
   "scripts": {
