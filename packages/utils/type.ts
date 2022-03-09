@@ -32,45 +32,15 @@ export function isDef(val: any) {
   return !isUndefined(val) && !isNull(val);
 }
 
-export type FilterKeys<T, U> = {
-  [K in keyof T]: K extends U ? never : K;
-}[keyof T];
-
-export type DeepReadonly<T> = T extends (infer R)[]
-  ? DeepReadonlyArray<R>
-  : T extends (...args: any[]) => any
-  ? T
-  : T extends Record<string, unknown>
-  ? DeepReadonlyObject<T>
-  : T;
-
-type DeepReadonlyArray<T> = Record<string, unknown> & readonly DeepReadonly<T>[];
-
-type DeepReadonlyObject<T> = {
-  readonly [P in keyof T]: DeepReadonly<T[P]>;
-};
-
-export function jsonParse(string: string) {
-  if (!string) return null;
-  if (!isString(string)) return string;
-  try {
-    const data = JSON.parse(string ?? '{}');
-    return data;
-  } catch (error) {
-    return null;
-  }
-}
-
-export function flatten<T>(array: T[]): T[] {
-  return array.reduce((pre, current) => {
-    return pre.concat(Array.isArray(current) ? flatten(current) : current);
-  }, [] as T[]);
-}
-
-export function toNum(size: any, defaultVal = 0) {
-  return !isNaN(+size) ? +size : defaultVal;
-}
-
 export function objectKeys<T, K extends keyof T>(object: T) {
   return Object.keys(object) as K[];
+}
+
+export function pick<T extends Record<string, unknown>, Key extends keyof T> (data: T, keys: Key[]) {
+  return objectKeys<T, Key>(data).reduce((pre, key) => {
+    if (keys.includes(key)) {
+      pre[key] = data[key];
+    }
+    return pre;
+  }, {} as Pick<T, Key>)
 }
