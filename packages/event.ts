@@ -35,18 +35,6 @@ export type Handler<Events, Key extends keyof Events> = (
   sendResponse: (response?: CallbackResponse) => void,
 ) => CallbackResponse | Promise<CallbackResponse> | void | Promise<void>;
 
-export function getFuncParameters(func: (...args: any[]) => any) {
-  if (isFunction(func)) {
-    const match = /[^(]+\(([^)]*)?\)/gm.exec(Function.prototype.toString.call(func));
-    if (match?.[1]) {
-      const args = match?.[1].replace?.(/[^,\w]*/g, '')?.split?.(',');
-      return args.length;
-    }
-  }
-
-  return 0;
-}
-
 export class Event<Events extends Record<EventType, unknown>> {
   listeners = new Map();
   scope: Scope;
@@ -59,6 +47,7 @@ export class Event<Events extends Record<EventType, unknown>> {
     this.scope = scope;
     chrome.runtime?.onMessage?.addListener?.((request, sender, sendResponse) => {
       this.dispatchEvent(request, sendResponse);
+      return true;
     });
   }
   private dispatchEvent(
@@ -76,7 +65,7 @@ export class Event<Events extends Record<EventType, unknown>> {
             callback?: (response?: CallbackResponse) => void,
           ) => CallbackResponse | Promise<CallbackResponse> | void | Promise<void>,
         ) => {
-          const paramSize = getFuncParameters(handler);
+          const paramSize = handler.length;
           const response = handler?.(data, sendResponse);
           if (paramSize < 2) {
             // 接口设计需要发送回执
