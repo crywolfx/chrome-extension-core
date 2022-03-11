@@ -82,3 +82,5 @@ export class ChromeStorage<T extends Record<string, unknown>> {
     chrome.storage?.onChanged?.removeListener?.(onChange as any);
   }
 }
+
+export const Store = ChromeStorage;

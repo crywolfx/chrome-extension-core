@@ -31,7 +31,7 @@ chromeEvent.emit('anyEvent', 'test test test').then((res) => {
 
 ### Init Store
 ```typescript
-import { ChromeStorage } from 'chrome-extension-core';
+import { Store } from 'chrome-extension-core';
 
 export type StorageInfo = {
   anyStore: boolean; 
@@ -41,16 +41,16 @@ export const defaultValue: StorageInfo = {
   anyStore: false,
 };
 
-export const store = new ChromeStorage<StorageInfo>(chrome.storage.local, defaultValue);
+export const chromeStore = new Store<StorageInfo>(chrome.storage.local, defaultValue);
 ```
 
 ### Use Store
 ```typescript
-store.get('anyStore').then((res) => {
+chromeStore.get('anyStore').then((res) => {
   console.log(res); // false
 })
-store.set('anyStore', true);
-store.get('anyStore').then((res) => {
+chromeStore.set('anyStore', true);
+chromeStore.get('anyStore').then((res) => {
   console.log(res); // true
 })
 ```
