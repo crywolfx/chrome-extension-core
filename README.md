@@ -38,18 +38,20 @@ export type StorageInfo = {
 };
 
 export const defaultValue: StorageInfo = {
-  isActive: false,
+  anyStore: false,
 };
 
-// 插件环境的全局storage
 export const store = new ChromeStorage<StorageInfo>(chrome.storage.local, defaultValue);
 ```
 
 ### Use Store
 ```typescript
-store.set('anyStore', false);
 store.get('anyStore').then((res) => {
   console.log(res); // false
+})
+store.set('anyStore', true);
+store.get('anyStore').then((res) => {
+  console.log(res); // true
 })
 ```
 
