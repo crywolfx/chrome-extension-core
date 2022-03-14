@@ -61,6 +61,14 @@ export function jsonParse(string: string) {
   }
 }
 
+export function jsonStringify(data: any) {
+  try {
+    return JSON.stringify(data);
+  } catch (error) {
+    return '';
+  }
+}
+
 export function flatten<T>(array: T[]): T[] {
   return array.reduce((pre, current) => {
     return pre.concat(Array.isArray(current) ? flatten(current) : current);

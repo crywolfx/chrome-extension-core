@@ -1,4 +1,3 @@
-import { isFunction } from './utils';
 import { getTab } from './tab';
 
 export type Scope = string | symbol | undefined;
@@ -153,3 +152,5 @@ export class Event<Events extends Record<EventType, unknown>> {
     });
   }
 }
+
+export const ChromeEvent = Event;
