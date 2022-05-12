@@ -111,44 +111,27 @@ export class Event<Events extends Record<EventType, unknown>> {
     }
   }
 
-  /**
-   * 不指定tabId发送消息
-   * 长用作给background发送消息
-   */
   emit<Key extends keyof Events, T = any>(
     key: Key,
     data: Events[Key],
-  ) {
-    const message = new EventMessage(key, data, this.scope);
-    return new Promise<CallbackResponse<T> | undefined>((resolve) => {
-      chrome.runtime?.sendMessage?.(message, (res) => {
-        resolve(res);
-      });
-    });
-  }
-
-  /**
-   * 指定tabId发送消息
-   * 默认为当前激活状态的tabId
-   */
-  emitSpecify<Key extends keyof Events, T = any>(
-    key: Key,
-    data: Events[Key],
     options?: {
-      type?: 'tab' | 'extension';
-      id?: number;
+      type: 'tab' | 'extension';
+      id?: number | string;
     }
   ) {
     const message = new EventMessage(key, data, this.scope);
     return new Promise<CallbackResponse<T> | undefined>(async (resolve, reject) => {
-      const type = options?.type || 'tab';
-      const id = options?.id || type === 'tab' ? (await getTab().catch(() => Promise.resolve({ id: undefined })))?.id : chrome.runtime.id;
-      if (id) {
-        chrome.tabs?.sendMessage?.(id as any, message, (res) => {
-          resolve(res);
-        });
+      if (!options) {
+        return chrome.runtime?.sendMessage?.(message, resolve);
+      }
+      if (options.type === 'extension') {
+        const id = options.id as string || chrome.runtime.id;
+        if (!id) return reject('id is not exist!');
+        chrome.runtime?.sendMessage?.(id, message, resolve);
       } else {
-        reject('tab id is not exist!');
+        const id = options.id || (await getTab().catch(() => Promise.resolve({ id: undefined })))?.id
+        if (!id) return reject('id is not exist!');
+        chrome.tabs?.sendMessage?.(id as number, message, resolve);
       }
     });
   }
