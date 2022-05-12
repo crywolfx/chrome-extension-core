@@ -14,13 +14,13 @@ export class EventMessage<Key = EventType, DataType = any> {
   }
 }
 
-export class CallbackResponse {
+export class CallbackResponse<T = any> {
   success?: boolean;
-  data: any;
+  data: T;
   message?: string;
   constructor(success = true, data = null, message = '') {
     this.success = success;
-    this.data = data;
+    this.data = data as unknown as T;
     this.message = message;
   }
 }
@@ -115,15 +115,13 @@ export class Event<Events extends Record<EventType, unknown>> {
    * 不指定tabId发送消息
    * 长用作给background发送消息
    */
-  emit<Key extends keyof Events>(
+  emit<Key extends keyof Events, T = any>(
     key: Key,
     data: Events[Key],
-    successCallback?: (response?: CallbackResponse) => void,
   ) {
     const message = new EventMessage(key, data, this.scope);
-    return new Promise<CallbackResponse | undefined>((resolve) => {
+    return new Promise<CallbackResponse<T> | undefined>((resolve) => {
       chrome.runtime?.sendMessage?.(message, (res) => {
-        successCallback?.(res);
         resolve(res);
       });
     });
@@ -133,18 +131,20 @@ export class Event<Events extends Record<EventType, unknown>> {
    * 指定tabId发送消息
    * 默认为当前激活状态的tabId
    */
-  emitSpecify<Key extends keyof Events>(
+  emitSpecify<Key extends keyof Events, T = any>(
     key: Key,
     data: Events[Key],
-    successCallback?: (response?: CallbackResponse) => void,
-    tabId?: number,
+    options?: {
+      type?: 'tab' | 'extension';
+      id?: number;
+    }
   ) {
     const message = new EventMessage(key, data, this.scope);
-    return new Promise<CallbackResponse | undefined>(async (resolve, reject) => {
-      const _tabId = tabId || (await getTab().catch(() => Promise.resolve({ id: undefined })))?.id;
-      if (_tabId) {
-        chrome.tabs?.sendMessage?.(_tabId, message, (res) => {
-          successCallback?.(res);
+    return new Promise<CallbackResponse<T> | undefined>(async (resolve, reject) => {
+      const type = options?.type || 'tab';
+      const id = options?.id || type === 'tab' ? (await getTab().catch(() => Promise.resolve({ id: undefined })))?.id : chrome.runtime.id;
+      if (id) {
+        chrome.tabs?.sendMessage?.(id as any, message, (res) => {
           resolve(res);
         });
       } else {
