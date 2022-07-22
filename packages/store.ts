@@ -177,7 +177,7 @@ export class ChromeStorage<T extends Record<string, unknown>> {
   removeWatcher(onChange: WatcherCallback<T>) {
     this.watcherSet.delete(onChange);
     if (this.watcherSet.size <= 0) {
-      this.removeWatcher(this.onChange.bind(this));
+      this.removeOriginalWatcher(this.onChange.bind(this));
     }
   }
 
