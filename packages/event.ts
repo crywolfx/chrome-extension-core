@@ -1,4 +1,3 @@
-import { isFunction } from './utils';
 import { getTab } from './tab';
 
 export type Scope = string | symbol | undefined;
@@ -35,7 +34,7 @@ export type Handler<Events, Key extends keyof Events> = (
   sendResponse: (response?: CallbackResponse) => void,
 ) => CallbackResponse | Promise<CallbackResponse> | void | Promise<void>;
 
-export class Event<Events extends Record<EventType, unknown>> {
+export class ChromeEvent<Events extends Record<EventType, unknown>> {
   listeners = new Map();
   scope: Scope;
   /**
@@ -136,3 +135,5 @@ export class Event<Events extends Record<EventType, unknown>> {
     });
   }
 }
+
+export const Event = ChromeEvent;

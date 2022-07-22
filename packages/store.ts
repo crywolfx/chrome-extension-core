@@ -1,3 +1,5 @@
+import { isObject } from "./utils";
+
 export type WatcherCallback<T extends Record<string, unknown>> = (
   changes: Record<keyof T, chrome.storage.StorageChange>,
   areaName?: chrome.storage.AreaName,
@@ -22,11 +24,15 @@ export class ChromeStorage<T extends Record<string, unknown>> {
    * @return promise
    * @support MV2 & MV3
    */
-  set<Key extends keyof T>(key: Key, value: T[Key]): Promise<void> {
-    return new Promise((resolve) => {
-      this.runTimeApi?.set?.({ [key]: value }, () => {
-        resolve();
-      });
+  set<Key extends keyof T>(data: Record<Key, T[Key]>): Promise<void>;
+  set<Key extends keyof T>(key: Key, value: T[Key]): Promise<void>;
+  set<Key extends keyof T>(key: Key | Record<Key, T[Key]>, value?: T[Key]): Promise<void> {
+    return new Promise<void>((resolve) => {
+      if (isObject(key)) {
+        this.runTimeApi.set(key, resolve);
+      } else {
+        this.runTimeApi?.set?.({ [key]: value }, resolve);
+      }
     });
   }
 
@@ -34,9 +40,9 @@ export class ChromeStorage<T extends Record<string, unknown>> {
    * @return promise
    * @support MV2 & MV3
    */
-  async get<Key extends keyof T>(key: Key): Promise<T[Key]>;
-  async get<Key extends keyof T>(key: Key[]): Promise<Pick<T, Key>>;
-  async get<Key extends keyof T>(key: Key | Key[]): Promise<T[Key] | Pick<T, Key>> {
+  get<Key extends keyof T>(key: Key): Promise<T[Key]>;
+  get<Key extends keyof T>(key: Key[]): Promise<Pick<T, Key>>;
+  get<Key extends keyof T>(key: Key | Key[]): Promise<T[Key] | Pick<T, Key>> {
     return new Promise((resolve) => {
       this.runTimeApi?.get?.(key as string | string[], (res) => {
         const mergeDefaultRes = { ...this.defaultValue, ...res };
@@ -46,6 +52,10 @@ export class ChromeStorage<T extends Record<string, unknown>> {
     });
   }
 
+  /**
+   * @return promise
+   * @support MV2 & MV3
+   */
   getAll() {
     return new Promise<T>((resolve) => {
       this.runTimeApi?.get?.((item) => {
@@ -58,20 +68,20 @@ export class ChromeStorage<T extends Record<string, unknown>> {
    * @return promise
    * @support MV2 & MV3
    */
-  clear(callback: () => void): Promise<void> {
-    return new Promise((resolve) => {
-      this.runTimeApi.clear(() => {
-        callback();
-        resolve();
-      });
+  clear() {
+    return new Promise<void>((resolve) => {
+      this.runTimeApi.clear(resolve);
     });
   }
 
   /**
-   * @support MV3
+   * @return promise
+   * @support MV2 & MV3
    */
   remove<Key extends keyof T>(key: Key | Key[]) {
-    return this.runTimeApi?.remove?.(key as string | string[]);
+    return new Promise<void>((resolve) => {
+      this.runTimeApi?.remove?.(key as string | string[], resolve);
+    })
   }
 
   initWatcher(onChange: WatcherCallback<T>) {
