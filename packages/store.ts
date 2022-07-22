@@ -1,22 +1,31 @@
-import { isObject } from "./utils";
+import { isObject, objectKeys, pick } from "./utils";
 
 export type WatcherCallback<T extends Record<string, unknown>> = (
   changes: Record<keyof T, chrome.storage.StorageChange>,
   areaName?: chrome.storage.AreaName,
 ) => void;
+
+export type Options<T extends Record<string, unknown>> = {
+  onChange?: WatcherCallback<T>,
+  scope?: string,
+}
 export class ChromeStorage<T extends Record<string, unknown>> {
+  private watcherSet = new Set<WatcherCallback<T>>();
+  private originWatcherSet = new Set<WatcherCallback<T>>();
   private runTimeApi: chrome.storage.SyncStorageArea | chrome.storage.LocalStorageArea;
   defaultValue: T;
+  scope?: string;
 
   constructor(
     runTimeApi: chrome.storage.SyncStorageArea | chrome.storage.LocalStorageArea,
     defaultValue: T,
-    onChange?: WatcherCallback<T>,
+    options?: Options<T>,
   ) {
     this.runTimeApi = runTimeApi;
     this.defaultValue = defaultValue;
-    if (onChange) {
-      this.initWatcher(onChange);
+    this.scope = options?.scope;
+    if (options?.onChange) {
+      this.addWatcher(options.onChange);
     }
   }
 
@@ -28,10 +37,27 @@ export class ChromeStorage<T extends Record<string, unknown>> {
   set<Key extends keyof T>(key: Key, value: T[Key]): Promise<void>;
   set<Key extends keyof T>(key: Key | Record<Key, T[Key]>, value?: T[Key]): Promise<void> {
     return new Promise<void>((resolve) => {
-      if (isObject(key)) {
-        this.runTimeApi.set(key, resolve);
+      const isPlainObject = isObject(key);
+      if (!this.scope) {
+        if (isPlainObject) {
+          this.runTimeApi.set(key, resolve);
+        } else {
+          this.runTimeApi?.set?.({ [key]: value }, resolve);
+        } 
       } else {
-        this.runTimeApi?.set?.({ [key]: value }, resolve);
+        this.getAll()
+          .then((scopeData) => {
+            if (isPlainObject) {
+              scopeData = { ...scopeData, ...key };
+            } else {
+              scopeData[key] = value as T[Key];
+            }
+            return scopeData;
+          })
+          .then((scopeData) => {
+            this.scope &&
+              this.runTimeApi?.set?.({ [this.scope]: scopeData }, resolve);
+          });
       }
     });
   }
@@ -44,9 +70,11 @@ export class ChromeStorage<T extends Record<string, unknown>> {
   get<Key extends keyof T>(key: Key[]): Promise<Pick<T, Key>>;
   get<Key extends keyof T>(key: Key | Key[]): Promise<T[Key] | Pick<T, Key>> {
     return new Promise((resolve) => {
-      this.runTimeApi?.get?.(key as string | string[], (res) => {
-        const mergeDefaultRes = { ...this.defaultValue, ...res };
-        if (Array.isArray(key)) resolve(mergeDefaultRes as Pick<T, Key>);
+      const reallyKey = this.scope ? this.scope : key;
+      this.runTimeApi?.get?.(reallyKey as string | string[], (res) => {
+        const reallyRes = this.scope ? res[this.scope] : res;
+        const mergeDefaultRes = { ...this.defaultValue, ...reallyRes };
+        if (Array.isArray(key)) resolve(pick<T, Key>(mergeDefaultRes, key));
         resolve(mergeDefaultRes[key as string] as T[Key]);
       });
     });
@@ -58,8 +86,10 @@ export class ChromeStorage<T extends Record<string, unknown>> {
    */
   getAll() {
     return new Promise<T>((resolve) => {
-      this.runTimeApi?.get?.((item) => {
-        resolve({ ...this.defaultValue, ...item } as T);
+      this.runTimeApi?.get?.((res) => {
+        const reallyRes = this.scope ? res[this.scope] : res;
+        const mergeDefaultRes = { ...this.defaultValue, ...reallyRes };
+        resolve(mergeDefaultRes as T);
       });
     });
   }
@@ -70,7 +100,11 @@ export class ChromeStorage<T extends Record<string, unknown>> {
    */
   clear() {
     return new Promise<void>((resolve) => {
-      this.runTimeApi.clear(resolve);
+      if (this.scope) {
+        this.runTimeApi.set({ [this.scope]: {} }, resolve);
+      } else {
+        this.runTimeApi.clear(resolve);
+      }
     });
   }
 
@@ -80,16 +114,115 @@ export class ChromeStorage<T extends Record<string, unknown>> {
    */
   remove<Key extends keyof T>(key: Key | Key[]) {
     return new Promise<void>((resolve) => {
-      this.runTimeApi?.remove?.(key as string | string[], resolve);
+      if (this.scope) {
+        this.runTimeApi.get(this.scope, (value) => {
+          const valueData = value as T;
+          const keys = Array.isArray(key) ? key : [key];
+          const removedValue = objectKeys<T, Key>(valueData)?.reduce?.(
+            (pre, currentKey: Key) => {
+              if (!keys.includes(currentKey)) {
+                pre[currentKey as any] = valueData[currentKey];
+              }
+              return pre;
+            },
+            {} as Omit<T, Key>,
+          );
+          this.scope &&
+            this.runTimeApi.set({ [this.scope]: removedValue }, resolve);
+        });
+      } else {
+        this.runTimeApi?.remove?.(key as string | string[], resolve);
+      }
+    });
+  }
+
+  private onChange(changes: Record<keyof T, chrome.storage.StorageChange>, areaName?: chrome.storage.AreaName) {
+    this.watcherSet.forEach((listener) => {
+      if (this.scope) {
+        const oldValue = changes[this.scope].oldValue as T;
+        const newValue = changes[this.scope].newValue as T;
+        const scopeChanges = objectKeys(newValue).reduce<Record<keyof T, chrome.storage.StorageChange>>((pre, key) => {
+          pre[key] = {
+            oldValue: oldValue[key],
+            newValue: newValue[key],
+          }
+          return pre;
+        }, {} as any)
+        listener(scopeChanges, areaName);
+      } else {
+        listener(changes, areaName);
+      }
     })
   }
 
-  initWatcher(onChange: WatcherCallback<T>) {
+  /**
+   * 添加watcher
+   * 将会被收集起来，只能通过delWatcher删除
+   * @param {WatcherCallback<T>} onChange
+   * @memberof ChromeStorage
+   */
+  addWatcher(onChange: WatcherCallback<T>) {
+    this.watcherSet.add(onChange);
+    if (this.watcherSet.size > 0) {
+      this.addOriginalWatcher(this.onChange.bind(this));
+    }
+  }
+
+  /**
+   * 删除watcher监听
+   * @desc 只能删除通过addWatcher添加的
+   * @param {WatcherCallback<T>} onChange
+   * @memberof ChromeStorage
+   */
+  removeWatcher(onChange: WatcherCallback<T>) {
+    this.watcherSet.delete(onChange);
+    if (this.watcherSet.size <= 0) {
+      this.removeWatcher(this.onChange.bind(this));
+    }
+  }
+
+  /**
+   * 清空watcher监听
+   * @desc 只能清空通过addWatcher添加的
+   * @memberof ChromeStorage
+   */
+  clearWatcher () {
+    this.watcherSet.clear();
+    this.removeWatcher(this.onChange.bind(this));
+  }
+
+  /**
+   * 添加原生watcher
+   * @desc 原生chromeAPI提供的监听方法，无法细分到当前scope，需要调用removeOriginalWatcher来移除
+   * @param {WatcherCallback<T>} onChange
+   * @memberof ChromeStorage
+   */
+  addOriginalWatcher(onChange: WatcherCallback<T>) {
+    this.originWatcherSet.add(onChange);
     chrome.storage?.onChanged?.addListener?.(onChange as any);
   }
 
-  removeWatcher(onChange: WatcherCallback<T>) {
+  /**
+   * 删除原生watcher
+   * @desc 移除原生添加的watcher
+   * @param {WatcherCallback<T>} onChange
+   * @memberof ChromeStorage
+   */
+  removeOriginalWatcher(onChange: WatcherCallback<T>) {
+    this.originWatcherSet.delete(onChange);
     chrome.storage?.onChanged?.removeListener?.(onChange as any);
+  }
+
+  clearOriginalWatcher () {
+    this.originWatcherSet.forEach((listener) => {
+      chrome.storage?.onChanged?.removeListener?.(listener as any);
+    });
+    this.originWatcherSet.clear();
+  }
+
+  emptyWatcher () {
+    this.clearWatcher();
+    this.clearOriginalWatcher();
   }
 }
 
