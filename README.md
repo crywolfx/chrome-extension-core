@@ -8,7 +8,6 @@ Simple use of the chrome Extension API
 ### Init Event
 ```typescript
 import { Event } from 'chrome-extension-core';
-import type { RequestInitType } from '@/common/request/type';
 
 type EventInfo = {
   anyEvent: string
@@ -41,18 +40,21 @@ export const defaultValue: StorageInfo = {
   anyStore: false,
 };
 
-export const chromeStore = new Store<StorageInfo>(chrome.storage.local, defaultValue);
+export const chromeStore = new Store<StorageInfo>(chrome.storage.local, defaultValue, { scope: 'scope' });
 ```
 
 ### Use Store
 ```typescript
 chromeStore.get('anyStore').then((res) => {
   console.log(res); // false
+});
+chromeStore.addWatcher((data) => {
+  console.log(data) // { anyStore: { newValue: true, oldValue: false }}
 })
 chromeStore.set('anyStore', true);
 chromeStore.get('anyStore').then((res) => {
   console.log(res); // true
-})
+});
 ```
 
 ## API 
