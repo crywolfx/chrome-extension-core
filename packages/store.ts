@@ -139,15 +139,16 @@ export class ChromeStorage<T extends Record<string, unknown>> {
   private onChange(changes: Record<keyof T, chrome.storage.StorageChange>, areaName?: chrome.storage.AreaName) {
     this.watcherSet.forEach((listener) => {
       if (this.scope) {
-        const oldValue = changes[this.scope].oldValue as T;
-        const newValue = changes[this.scope].newValue as T;
+        const oldValue = changes?.[this.scope]?.oldValue as T;
+        const newValue = changes?.[this.scope]?.newValue as T;
+        if (!newValue) return;
         const scopeChanges = objectKeys(newValue).reduce<Record<keyof T, chrome.storage.StorageChange>>((pre, key) => {
           pre[key] = {
-            oldValue: oldValue[key],
-            newValue: newValue[key],
+            oldValue: oldValue?.[key],
+            newValue: newValue?.[key],
           }
           return pre;
-        }, {} as any)
+        }, {} as any);
         listener(scopeChanges, areaName);
       } else {
         listener(changes, areaName);
