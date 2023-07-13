@@ -25,5 +25,4 @@ yarn-error.log*
 .history
 .idea
 .vscode
-yarn.lock
 package-json.lock
