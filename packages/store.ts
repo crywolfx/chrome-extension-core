@@ -1,3 +1,4 @@
+import merge from 'deepmerge';
 import { isObject, objectKeys, pick } from "./utils";
 
 export type WatcherCallback<T extends Record<string, unknown>> = (
@@ -73,7 +74,7 @@ export class ChromeStorage<T extends Record<string, unknown>> {
       const reallyKey = this.scope ? this.scope : key;
       this.runTimeApi?.get?.(reallyKey as string | string[], (res) => {
         const reallyRes = this.scope ? res[this.scope] : res;
-        const mergeDefaultRes = { ...this.defaultValue, ...reallyRes };
+        const mergeDefaultRes = merge(this.defaultValue, reallyRes) as T;
         if (Array.isArray(key)) resolve(pick<T, Key>(mergeDefaultRes, key));
         resolve(mergeDefaultRes[key as string] as T[Key]);
       });
