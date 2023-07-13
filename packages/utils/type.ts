@@ -32,7 +32,7 @@ export function isDef(val: any) {
   return !isUndefined(val) && !isNull(val);
 }
 
-export function objectKeys<T, K extends keyof T>(object: T) {
+export function objectKeys<T extends Record<string, unknown>, K extends keyof T>(object: T) {
   return Object.keys(object) as K[];
 }
 
