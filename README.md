@@ -13,7 +13,11 @@ type EventInfo = {
   anyEvent: string
 };
 
-export const chromeEvent = new Event<EventInfo>('scope');
+type EventResponse = {
+  anyEvent: number;
+}
+
+export const chromeEvent = new Event<EventInfo, EventResponse>('scope');
 ```
 ### Use Event
 ```typescript
