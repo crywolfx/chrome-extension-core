@@ -25,7 +25,7 @@ export interface RequestMethodProxy<R = false> {
 
 const createProxyRequest = () => {
   const request = async (url, config) => {
-    const formatData = await serialize(config.data);
+    const formatData = await serialize(config?.data);
     const res = await proxyEvent.emit('request', {
       url,
       ...config,

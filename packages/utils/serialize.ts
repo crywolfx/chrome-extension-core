@@ -41,7 +41,7 @@ export async function serialize(data: any): Promise<any> {
 
 export function deserialize(src: any) {
   if (!src) return undefined;
-  switch (src.cls) {
+  switch (src?.cls) {
     case 'FormData': {
       const fd = new FormData();
       for (const [key, items] of src.value) {
