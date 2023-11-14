@@ -26,9 +26,10 @@ export interface RequestMethodProxy<R = false> {
 /**
  * 创建一个代理请求，将通过事件通信发送到background进行执行
  * @param {string} [scope] 代理请求scope, 可避免多个项目都初始化了该代理能力且配置不一样导致的代理混乱问题，需要和background配置保持一致
- * @return {*} 
+ * @return {*}
  */
-export const createProxyRequest = (scope?: string) => {
+export const createProxyRequest = (options?: { scope?: string }) => {
+  const scope = options?.scope;
   const proxyEvent = createProxyEvent(scope);
   const request = async (url, config) => {
     const formatData = await serialize(config?.data);
