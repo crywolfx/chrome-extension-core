@@ -17,24 +17,38 @@ export class CallbackResponse<T = any> {
   success?: boolean;
   data: T;
   message?: string;
-  constructor(success = true, data = null, message = '') {
+  constructor(success = true, data: T, message = '') {
     this.success = success;
-    this.data = data as unknown as T;
+    this.data = data;
     this.message = message;
   }
 }
 
-export function getCallbackResponse(data: CallbackResponse) {
-  return new CallbackResponse(data.success, data.data, data.message);
+export function getCallbackResponse<T = any>(data: CallbackResponse<T>) {
+  return new CallbackResponse<T>(data.success, data.data, data.message);
 }
 
 export type EventType = string | symbol | number;
-export type Handler<Events, Key extends keyof Events> = (
+export type Handler<
+  Events,
+  Key extends keyof Events,
+  EventsResponse extends Partial<Record<keyof Events, any>>
+> = (
   data: Events[Key],
-  sendResponse: (response?: CallbackResponse) => void,
-) => CallbackResponse | Promise<CallbackResponse> | void | Promise<void>;
+  sendResponse: (response?: CallbackResponse<EventsResponse[Key]>) => void
+) =>
+  | CallbackResponse<EventsResponse[Key]>
+  | Promise<CallbackResponse<EventsResponse[Key]>>
+  | void
+  | Promise<void>;
 
-export class ChromeEvent<Events extends Record<EventType, unknown>> {
+export class ChromeEvent<
+  Events extends Record<EventType, unknown>,
+  EventsResponse extends Partial<Record<keyof Events, any>> = Record<
+    keyof Events,
+    any
+  >
+> {
   listeners = new Map();
   scope: Scope;
   /**
@@ -44,14 +58,16 @@ export class ChromeEvent<Events extends Record<EventType, unknown>> {
    */
   constructor(scope?: Scope) {
     this.scope = scope;
-    chrome.runtime?.onMessage?.addListener?.((request, sender, sendResponse) => {
-      this.dispatchEvent(request, sendResponse);
-      return true;
-    });
+    chrome.runtime?.onMessage?.addListener?.(
+      (request, sender, sendResponse) => {
+        this.dispatchEvent(request, sendResponse);
+        return true;
+      }
+    );
   }
   private dispatchEvent(
     request: EventMessage<keyof Events, Events[keyof Events]>,
-    sendResponse: (response?: CallbackResponse) => void,
+    sendResponse: (response?: CallbackResponse) => void
   ) {
     const { key, data, scope } = request;
     if (scope && scope !== this.scope) return;
@@ -61,8 +77,12 @@ export class ChromeEvent<Events extends Record<EventType, unknown>> {
         (
           handler: (
             data: any,
-            callback?: (response?: CallbackResponse) => void,
-          ) => CallbackResponse | Promise<CallbackResponse> | void | Promise<void>,
+            callback?: (response?: CallbackResponse) => void
+          ) =>
+            | CallbackResponse
+            | Promise<CallbackResponse>
+            | void
+            | Promise<void>
         ) => {
           const paramSize = handler.length;
           const response = handler?.(data, sendResponse);
@@ -72,11 +92,14 @@ export class ChromeEvent<Events extends Record<EventType, unknown>> {
               if (response instanceof Promise) {
                 response
                   .then((res) => {
-                    const resData = res || new CallbackResponse(true, null, 'success');
+                    const resData =
+                      res || new CallbackResponse(true, null, 'success');
                     sendResponse(getCallbackResponse(resData));
                   })
                   .catch((error) => {
-                    sendResponse(new CallbackResponse(false, error, error?.toString?.()));
+                    sendResponse(
+                      new CallbackResponse(false, error, error?.toString?.())
+                    );
                   });
               } else {
                 sendResponse(getCallbackResponse(response));
@@ -85,13 +108,17 @@ export class ChromeEvent<Events extends Record<EventType, unknown>> {
               sendResponse(new CallbackResponse(true, null, 'success'));
             }
           }
-        },
+        }
       );
     }
   }
 
-  on<Key extends keyof Events>(key: Key, handler: Handler<Events, Key>) {
-    const handlers: Handler<Events, Key>[] = this.listeners.get(key);
+  on<Key extends keyof Events>(
+    key: Key,
+    handler: Handler<Events, Key, EventsResponse>
+  ) {
+    const handlers: Handler<Events, Key, EventsResponse>[] =
+      this.listeners.get(key);
     if (handlers) {
       handlers.push(handler);
     } else {
@@ -99,8 +126,12 @@ export class ChromeEvent<Events extends Record<EventType, unknown>> {
     }
   }
 
-  off<Key extends keyof Events>(key: Key, handler?: Handler<Events, Key>) {
-    const handlers: Handler<Events, Key>[] = this.listeners.get(key);
+  off<Key extends keyof Events>(
+    key: Key,
+    handler?: Handler<Events, Key, EventsResponse>
+  ) {
+    const handlers: Handler<Events, Key, EventsResponse>[] =
+      this.listeners.get(key);
     if (handlers) {
       if (handler) {
         handlers.splice(handlers.indexOf(handler) >>> 0, 1);
@@ -110,7 +141,7 @@ export class ChromeEvent<Events extends Record<EventType, unknown>> {
     }
   }
 
-  emit<Key extends keyof Events, T = any>(
+  emit<Key extends keyof Events>(
     key: Key,
     data: Events[Key],
     options?: {
@@ -119,20 +150,23 @@ export class ChromeEvent<Events extends Record<EventType, unknown>> {
     }
   ) {
     const message = new EventMessage(key, data, this.scope);
-    return new Promise<CallbackResponse<T> | undefined>(async (resolve, reject) => {
-      if (!options) {
-        return chrome.runtime?.sendMessage?.(message, resolve);
+    return new Promise<CallbackResponse<EventsResponse[Key]> | undefined>(
+      async (resolve, reject) => {
+        if (!options) return chrome.runtime?.sendMessage?.(message, resolve);
+        if (options.type === 'extension') {
+          const id = (options.id as string) || chrome.runtime.id;
+          if (!id) return reject('id is not exist!');
+          chrome.runtime?.sendMessage?.(id, message, resolve);
+        } else {
+          const id =
+            options.id ||
+            (await getTab().catch(() => Promise.resolve({ id: undefined })))
+              ?.id;
+          if (!id) return reject('id is not exist!');
+          chrome.tabs?.sendMessage?.(id as number, message, resolve);
+        }
       }
-      if (options.type === 'extension') {
-        const id = options.id as string || chrome.runtime.id;
-        if (!id) return reject('id is not exist!');
-        chrome.runtime?.sendMessage?.(id, message, resolve);
-      } else {
-        const id = options.id || (await getTab().catch(() => Promise.resolve({ id: undefined })))?.id
-        if (!id) return reject('id is not exist!');
-        chrome.tabs?.sendMessage?.(id as number, message, resolve);
-      }
-    });
+    );
   }
 }
 
