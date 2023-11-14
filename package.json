@@ -31,6 +31,7 @@
   "homepage": "https://github.com/crywolfx/chrome-extension-core#readme",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^21.0.2",
+    "@rollup/plugin-json": "^6.0.1",
     "@rollup/plugin-typescript": "^8.3.1",
     "@types/lodash.clonedeep": "^4.5.7",
     "@types/lodash.isarray": "^4.0.7",
@@ -56,7 +57,8 @@
     "tsconfig-paths": "^3.12.0",
     "tslib": "^2.3.1",
     "typescript": "^4.5.5",
-    "typescript-transform-paths": "^3.3.1"
+    "typescript-transform-paths": "^3.3.1",
+    "umi-request": "^1.4.0"
   },
   "dependencies": {
     "@types/chrome": "^0.0.179",
@@ -68,8 +70,10 @@
     "lodash.isnumber": "^3.0.3",
     "lodash.isplainobject": "^4.0.6",
     "lodash.isregexp": "^4.0.1",
-    "lodash.isstring": "^4.0.1",
-    "umi-request": "^1.4.0"
+    "lodash.isstring": "^4.0.1"
+  },
+  "peerDependencies": {
+    "umi-request": ">=1.4.0"
   },
   "files": [
     "dist"

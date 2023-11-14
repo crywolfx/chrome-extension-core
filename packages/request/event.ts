@@ -1,5 +1,5 @@
-import { ChromeEvent } from '../event';
-import { RequestOptionsInit } from './direct';
+import { ChromeEvent } from '../core/event';
+import { RequestOptionsInit } from 'umi-request';
 
 export type Event = {
   request: RequestOptionsInit & {
