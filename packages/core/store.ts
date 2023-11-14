@@ -1,5 +1,5 @@
 import merge from 'deepmerge';
-import { isObject, objectKeys, pick } from "./utils";
+import { isObject, objectKeys, pick } from "../utils";
 
 export type WatcherCallback<T extends Record<string, unknown>> = (
   changes: Record<keyof T, chrome.storage.StorageChange>,

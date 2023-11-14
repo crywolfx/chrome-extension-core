@@ -1,0 +1,13 @@
+export declare function isFunction(val: any): val is (...args: any[]) => any;
+export declare function isArray<T>(val: any): val is T[];
+export declare function isDate(val: any): val is Date;
+export declare function isString(val: any): val is string;
+export declare function isNumber(val: any): val is number;
+export declare function isRegExp(val: any): val is RegExp;
+export declare function isObject(val: any): val is Record<string, any>;
+export declare function isFormData(val: any): val is FormData;
+export declare function isUndefined(val: any): val is undefined;
+export declare function isNull(val: any): val is null;
+export declare function isDef(val: any): boolean;
+export declare function objectKeys<T extends Record<string, unknown>, K extends keyof T>(object: T): K[];
+export declare function pick<T extends Record<string, unknown>, Key extends keyof T>(data: T, keys: Key[]): Pick<T, Key>;

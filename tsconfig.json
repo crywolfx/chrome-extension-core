@@ -22,7 +22,6 @@
     "experimentalDecorators": true,
     "declaration": true,
     "emitDeclarationOnly": false,
-    "declarationDir": "./lib",
     "baseUrl": "./",
     "paths": {
       "@/*": [
@@ -40,6 +39,7 @@
     "packages"
   ],
   "exclude": [
-    "test"
+    "test",
+    "dist"
   ]
 }

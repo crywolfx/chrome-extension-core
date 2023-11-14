@@ -2,11 +2,15 @@
   "name": "chrome-extension-core",
   "version": "0.1.8",
   "description": "chrome extension core",
-  "main": "lib/index.js",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
   "scripts": {
     "prepare": "ts-patch install -s",
-    "build": "rollup -c",
-    "watch": "rollup -c -w"
+    "build:types": "tsc --declaration --emitDeclarationOnly --noEmit false --outDir types",
+    "build:esm": "rimraf ./dist/esm && NODE_ENV=production BABEL_ENV=esm rollup -c && yarn build:types --outDir ./dist/esm",
+    "build:cjs": "rimraf ./lib && NODE_ENV=production BABEL_ENV=cjs rollup -c && yarn build:types --outDir ./dist/cjs",
+    "build": "yarn build:cjs && yarn build:esm",
+    "watch:cjs": "BABEL_ENV=cjs rollup -c -w"
   },
   "repository": {
     "type": "git",
