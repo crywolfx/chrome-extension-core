@@ -1,11 +1,11 @@
 import { serialize } from '@/utils/serialize';
-import proxyEvent from './event';
 import type {
   RequestOptionsInit,
   RequestOptionsWithResponse,
   RequestOptionsWithoutResponse,
   RequestResponse,
 } from 'umi-request';
+import createProxyEvent from './event';
 
 export interface RequestMethodProxy<R = false> {
   /**
@@ -23,7 +23,13 @@ export interface RequestMethodProxy<R = false> {
   post: RequestMethodProxy<R>;
 }
 
-const createProxyRequest = () => {
+/**
+ * 创建一个代理请求，将通过事件通信发送到background进行执行
+ * @param {string} [scope] 代理请求scope, 可避免多个项目都初始化了该代理能力且配置不一样导致的代理混乱问题，需要和background配置保持一致
+ * @return {*} 
+ */
+export const createProxyRequest = (scope?: string) => {
+  const proxyEvent = createProxyEvent(scope);
   const request = async (url, config) => {
     const formatData = await serialize(config?.data);
     const res = await proxyEvent.emit('request', {
@@ -48,7 +54,3 @@ const createProxyRequest = () => {
     });
   return request as RequestMethodProxy<true | false>;
 };
-
-const proxyRequest = createProxyRequest();
-
-export default proxyRequest;

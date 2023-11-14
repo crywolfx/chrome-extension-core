@@ -1,6 +1,6 @@
 {
   "name": "chrome-extension-core",
-  "version": "0.1.9-beta.0",
+  "version": "0.1.9-beta.2",
   "description": "chrome extension core",
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",

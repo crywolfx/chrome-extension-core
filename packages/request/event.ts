@@ -1,17 +1,18 @@
 import { ChromeEvent } from '../core/event';
 import { RequestOptionsInit } from 'umi-request';
 
-export type Event = {
+type ProxyEvent = {
   request: RequestOptionsInit & {
     url: string;
-  }; 
+    scope?: string;
+  };
 };
 
-export type EventRes = {
-  request: any
+type ProxyEventRes = {
+  request: any;
 };
 
+const createProxyEvent = (scope = 'proxy-request') =>
+  new ChromeEvent<ProxyEvent, ProxyEventRes>(scope);
 
-const proxyEvent = new ChromeEvent<Event, EventRes>('proxy-request');
-
-export default proxyEvent;
+export default createProxyEvent;
