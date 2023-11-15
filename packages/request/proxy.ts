@@ -53,5 +53,5 @@ export const createProxyRequest = (options?: { scope?: string }) => {
       ...config,
       method: 'post',
     });
-  return request as RequestMethodProxy<true | false>;
+  return request as RequestMethodProxy<false>;
 };
