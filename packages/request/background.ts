@@ -28,7 +28,7 @@ export function initProxyRequest(config?: {
     | ExtendOptionsInit
     | ExtendOptionsWithoutResponse
     | ExtendOptionsWithResponse;
-}): RequestMethod<boolean> {
+}): RequestMethod<false> {
   const { scope, options }= config || {};
   const proxyEvent = createProxyEvent(scope);
   const instance = isObject(options) ? extend(options) : request;
